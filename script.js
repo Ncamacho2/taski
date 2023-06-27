@@ -1,4 +1,25 @@
-let tasks = [{
+// Agrega esto al inicio de tu archivo script.js
+firebase.initializeApp({
+    apiKey: "AIzaSyBctLStl-j5Hj_P9y2RKZBnIRluh-pcHGw",
+    authDomain: "taski-pgc.firebaseapp.com",
+    projectId: "taski-pgc",
+    storageBucket: "taski-pgc.appspot.com",
+    messagingSenderId: "954068434076",
+    appId: "1:954068434076:web:dc5b1baa7369b76a8fc159",
+    measurementId: "G-WV2P0TYJ22"
+});
+
+// Obtén una instancia de Firestore
+const db = firebase.firestore();
+// Obtén una referencia a la colección "tasks" en Firestore
+const tasksRef = firebase.firestore().collection("tasks");
+
+// Crea el arreglo para almacenar las tareas
+let tasks = [];
+
+
+
+let tasksa = [{
     id: 1,
     title: "Tarea 1",
     descrip: "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.",
@@ -100,6 +121,22 @@ function dragEnd(event) {
 }
 
 function renderTasks() {
+    // Obtiene las tareas de Firestore
+    tasksRef.get().then((querySnapshot) => {
+        // Itera sobre los documentos en la colección
+        querySnapshot.forEach((doc) => {
+            // Obtiene los datos de cada documento
+            const taskData = doc.data();
+            // Agrega los datos al arreglo de tareas
+            tasks.push(taskData);
+        });
+        renderTasks_all();
+    }).catch((error) => {
+        console.log("Error al obtener las tareas:", error);
+    });
+}
+
+function renderTasks_all() {
     const columns = ["Pendiente", "Progreso", "Completada", "Revisión", "Cancelada"];
 
     columns.forEach(column => {
@@ -302,35 +339,60 @@ function countTasksByState() {
 }
 // Función para agregar una nueva tarea
 function addTask() {
-    swal.fire({
-        title: "Nueva tarea",
-        text: "Ingrese el título de la tarea:",
-        input: "text",
-        buttons: {
-            cancel: true,
-            confirm: "Agregar",
-        },
-    }).then((value) => {
-        if (value) {
-            // El usuario ingresó un valor
-            const newTaskTitle = value.value;
+    let inputElement = document.getElementById('input');
+    let inputValue = inputElement.value;
 
-            // Crear una nueva tarea con el título ingresado
-            const newTask = {
-                id: generateTaskId(), // Generar un ID único para la tarea (debes implementar esta función)
-                title: newTaskTitle,
-                state: "Pendiente",
-            };
+    if (inputValue.trim().length === 0) {
+        swal.fire('Error', 'Debe llenar el título', 'error');
+    } else {
 
-            // Agregar la nueva tarea a tu estructura de datos
-            tasks.push(newTask);
+        swal.fire({
+            title: inputValue,
+            text: "Ingrese la descripción de la tarea:",
+            input: "text",
+            buttons: {
+                cancel: true,
+                confirm: "Agregar",
+            },
+        }).then((value) => {
+            if (value) {
+                // El usuario ingresó un valor
+                const newTaskTitle = value.value;
 
-            // Volver a renderizar las tareas para reflejar los cambios
-            renderTasks();
-        }
-    });
+                // Crear una nueva tarea con el título ingresado
+                const newTask = {
+                    id: generateTaskId(), // Generar un ID único para la tarea (debes implementar esta función)
+                    title: inputValue,
+                    descrip: newTaskTitle,
+                    state: "Pendiente",
+                };
+
+                // Guardar la tarea en Firestore
+                db.collection("tasks")
+                    .doc(newTask.id)
+                    .set(newTask)
+                    .then(() => {
+                        // Limpiar el campo de entrada
+                        input.value = "";
+
+                        // Actualizar la interfaz
+                        tasks.push(newTask);
+                        renderTasks();
+                    })
+                    .catch(error => {
+                        swal.fire('Error', 'Error al guardar la tarea', 'error');
+                        console.error("Error al guardar la tarea:", error);
+                    });
+            }
+        });
+    }
 }
 
+function llenardb() {
+    tasksa.forEach((task) => {
+        let docRef = db.collection("tasks").add(task);
+    });
+}
 
 // Llamar a la función para renderizar las tareas al cargar la página
 window.onload = renderTasks;
